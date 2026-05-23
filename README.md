@@ -34,27 +34,85 @@ Raspberry Pi にはアナログ入力ピンがないため、この教材では 
 6. [モーターを動かす](docs/05_motors/README.md)
 7. [小さな制作課題](docs/06_projects/README.md)
 
-## セットアップ
+## Ubuntu でのセットアップ
 
-Raspberry Pi OS 上で実行します。
+Ubuntu 22.04 LTS / 24.04 LTS 64-bit を入れた Raspberry Pi 5 で実行します。Raspberry Pi OS 用の `raspi-config` は使いません。
+
+SSH で Raspberry Pi に入ります。
+
+```bash
+ssh <ユーザー名>@<Raspberry Pi の IP アドレス>
+```
+
+OS と CPU アーキテクチャを確認します。
+
+```bash
+cat /etc/os-release
+uname -m
+```
+
+`uname -m` は 64-bit 環境なら `aarch64` です。
 
 ```bash
 sudo apt update
-sudo apt install -y python3-venv python3-pip git
+sudo apt upgrade -y
+sudo apt install -y git python3-venv python3-pip i2c-tools gpiod python3-lgpio
+git clone https://github.com/glhopper/raspberrypi5_education.git
+cd raspberrypi5_education
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-I2C/SPI を使う場合は Raspberry Pi の設定で有効化します。
+I2C/SPI を使う場合は `/boot/firmware/config.txt` に次の設定を追加または有効化して、再起動します。
 
 ```bash
-sudo raspi-config
+sudo nano /boot/firmware/config.txt
 ```
 
-`Interface Options` から `I2C` と `SPI` を有効化してください。
+```text
+dtparam=i2c_arm=on
+dtparam=spi=on
+```
+
+```bash
+sudo reboot
+```
+
+再起動後、もう一度 SSH で入り、リポジトリのディレクトリに戻ります。
+
+```bash
+ssh <ユーザー名>@<Raspberry Pi の IP アドレス>
+cd raspberrypi5_education
+source .venv/bin/activate
+```
+
+デバイスファイルの権限でアクセスできない場合は、現在のユーザーを GPIO/I2C/SPI 系グループに追加します。
+
+```bash
+for group in gpio i2c spi; do
+  if getent group "$group" >/dev/null; then sudo usermod -aG "$group" "$USER"; fi
+done
+```
+
+グループ追加後はいったんログアウトして入り直し、再度 `cd raspberrypi5_education` と `source .venv/bin/activate` を実行してください。
+
+環境確認:
+
+```bash
+python scripts/check_environment.py
+```
+
+SSH で運用する場合は、初期パスワードを変更し、可能なら公開鍵認証を使ってください。教室や家庭 LAN で使う場合も、不要なポートを開けないようにします。
 
 ## サンプル実行
+
+先に環境確認と I2C デバイス確認を行います。
+
+```bash
+python scripts/check_environment.py
+i2cdetect -y 1
+```
 
 ADS1115 で可変抵抗の値を読む例:
 
@@ -67,6 +125,8 @@ python examples/adc/read_ads1115.py
 ```bash
 python examples/motors/servo_sweep.py
 ```
+
+モーターやサーボのサンプルは、配線と外部電源を確認してから最後に実行してください。
 
 ## 安全上の注意
 
