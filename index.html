@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Raspberry Pi 5 Analog Device Tutorial</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --panel: #ffffff;
+      --ink: #172026;
+      --muted: #61717c;
+      --line: #dce3e7;
+      --green: #1e8a5a;
+      --green-dark: #146c47;
+      --teal: #0f6f77;
+      --amber: #b06000;
+      --red: #b23b3b;
+      --shadow: 0 16px 36px rgba(23, 32, 38, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--teal); }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: #fbfcfc;
+      padding: 22px 18px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(30, 138, 90, 0.16), transparent 58%),
+        #e7f2ed;
+      border: 1px solid #c5ded2;
+      display: grid;
+      place-items: center;
+      color: var(--green-dark);
+      font-weight: 800;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .progress-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .progress-row strong { font-size: 24px; }
+    .progress-row span { color: var(--muted); font-size: 13px; }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: #e3e9ec;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--teal));
+      transition: width 180ms ease;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #f8fafb;
+    }
+
+    .stat b { display: block; font-size: 18px; line-height: 1.2; }
+    .stat span { color: var(--muted); font-size: 12px; }
+
+    .search {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: #fff;
+      color: var(--ink);
+      margin-bottom: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .nav button {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      display: grid;
+      grid-template-columns: 24px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      text-align: left;
+    }
+
+    .nav button:hover,
+    .nav button.active {
+      background: #eef6f2;
+      border-color: #c9e2d6;
+    }
+
+    .nav-index {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #dfe8ec;
+      color: #3b4b54;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav-title {
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .nav-progress {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ghost-button,
+    .primary-button {
+      min-height: 38px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 0 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .primary-button {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .primary-button:hover { background: var(--green-dark); }
+    .ghost-button:hover { border-color: #b9c7ce; background: #f8fafb; }
+
+    main {
+      min-width: 0;
+      padding: 30px clamp(18px, 4vw, 56px) 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(250px, 360px);
+      gap: 28px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .hero-copy h2 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .circuit-panel {
+      min-height: 220px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 16px 16px, rgba(15, 111, 119, 0.28) 0 2px, transparent 3px) 0 0 / 32px 32px,
+        linear-gradient(135deg, #ffffff, #edf5f2);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .trace {
+      position: absolute;
+      height: 3px;
+      background: var(--green);
+      transform-origin: left center;
+      opacity: 0.9;
+    }
+
+    .trace.t1 { width: 72%; left: 14%; top: 35%; }
+    .trace.t2 { width: 42%; left: 28%; top: 58%; transform: rotate(28deg); }
+    .trace.t3 { width: 46%; left: 18%; top: 72%; transform: rotate(-22deg); background: var(--amber); }
+
+    .chip {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 104px;
+      height: 76px;
+      transform: translate(-50%, -50%);
+      border-radius: 8px;
+      background: #20323a;
+      box-shadow: 0 14px 26px rgba(23, 32, 38, 0.22);
+      color: #e9f6f1;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .pin {
+      position: absolute;
+      width: 8px;
+      height: 18px;
+      background: #c8d1d6;
+      border-radius: 2px;
+    }
+
+    .p1 { left: calc(50% - 64px); top: calc(50% - 28px); }
+    .p2 { left: calc(50% - 64px); top: calc(50% + 10px); }
+    .p3 { left: calc(50% + 56px); top: calc(50% - 28px); }
+    .p4 { left: calc(50% + 56px); top: calc(50% + 10px); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(250px, 340px);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .reader,
+    .tasks {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .reader-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding: 16px 18px;
+    }
+
+    .reader-header h3 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    .reader-header p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .content {
+      padding: 8px 22px 24px;
+    }
+
+    .content h1,
+    .content h2,
+    .content h3 {
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+
+    .content h1 { font-size: 30px; margin: 24px 0 12px; }
+    .content h2 { font-size: 22px; margin: 28px 0 10px; }
+    .content h3 { font-size: 18px; margin: 20px 0 8px; }
+    .content p { margin: 10px 0; }
+    .content ul,
+    .content ol { padding-left: 22px; }
+    .content li { margin: 5px 0; }
+
+    .content pre {
+      overflow: auto;
+      border-radius: 8px;
+      background: #16242b;
+      color: #e8f1f4;
+      padding: 14px;
+      line-height: 1.5;
+    }
+
+    .content code {
+      border-radius: 6px;
+      background: #edf2f4;
+      padding: 2px 5px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .content pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    .content th,
+    .content td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+
+    .content th {
+      background: #eef3f5;
+      text-align: left;
+    }
+
+    blockquote {
+      margin: 14px 0;
+      padding: 10px 14px;
+      border-left: 4px solid var(--amber);
+      background: #fff8ed;
+      color: #55370d;
+    }
+
+    .tasks {
+      position: sticky;
+      top: 22px;
+      padding: 16px;
+    }
+
+    .tasks h3 {
+      margin: 0 0 4px;
+      font-size: 17px;
+    }
+
+    .tasks p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 8px;
+    }
+
+    .check-item {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: #fbfcfc;
+    }
+
+    .check-item input {
+      width: 18px;
+      height: 18px;
+      margin: 3px 0 0;
+      accent-color: var(--green);
+    }
+
+    .check-item span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .empty {
+      display: none;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+      background: #fff;
+    }
+
+    .completion {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border-radius: 999px;
+      background: #eef6f2;
+      color: var(--green-dark);
+      padding: 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .danger {
+      color: var(--red);
+      border-color: #e9c6c6;
+    }
+
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .hero,
+      .workspace { grid-template-columns: 1fr; }
+      .tasks { position: static; }
+    }
+
+    @media (max-width: 560px) {
+      main { padding: 22px 14px 36px; }
+      .reader-header { align-items: flex-start; flex-direction: column; }
+      .sidebar-actions { flex-direction: column; }
+      .ghost-button,
+      .primary-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ADC</div>
+        <div>
+          <h1>Raspberry Pi 5 Analog Device Tutorial</h1>
+          <p>Markdown reader with progress</p>
+        </div>
+      </div>
+
+      <section class="progress-card" aria-label="全体進捗">
+        <div class="progress-row">
+          <strong id="overallPercent">0%</strong>
+          <span id="overallCount">0 / 0 sections</span>
+        </div>
+        <div class="bar" aria-hidden="true"><div class="bar-fill" id="overallBar"></div></div>
+        <div class="stats">
+          <div class="stat"><b id="donePages">0</b><span>完了した章</span></div>
+          <div class="stat"><b id="remainingSections">0</b><span>残りの節</span></div>
+        </div>
+      </section>
+
+      <input class="search" id="searchInput" type="search" placeholder="章や本文を検索" aria-label="章や本文を検索">
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-actions">
+        <button class="ghost-button" id="markAllCurrent" type="button">表示中を完了</button>
+        <button class="ghost-button danger" id="resetProgress" type="button">進捗をリセット</button>
+      </div>
+    </aside>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <h2>教材の読み進めを、その場で確認する。</h2>
+          <p>README と各章の Markdown を HTML 化し、章ごとの完了状態をブラウザに保存します。</p>
+        </div>
+        <div class="circuit-panel" aria-hidden="true">
+          <div class="trace t1"></div>
+          <div class="trace t2"></div>
+          <div class="trace t3"></div>
+          <div class="pin p1"></div>
+          <div class="pin p2"></div>
+          <div class="pin p3"></div>
+          <div class="pin p4"></div>
+          <div class="chip">GPIO</div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <article class="reader">
+          <header class="reader-header">
+            <div>
+              <h3 id="pageTitle"></h3>
+              <p id="pagePath"></p>
+            </div>
+            <span class="completion" id="pageCompletion">0%</span>
+          </header>
+          <div class="content" id="content"></div>
+          <div class="empty" id="emptyState">検索条件に合う章がありません。</div>
+        </article>
+
+        <aside class="tasks">
+          <h3>この章の進捗</h3>
+          <p>読み終えた節にチェックを入れると、左の進捗に反映されます。</p>
+          <div class="checklist" id="checklist"></div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const pages = [{"id":"page-0","title":"Raspberry Pi 5 Analog Device Tutorial","path":"README.md","sections":[{"id":"page-0-section-0","title":"対象"},{"id":"page-0-section-1","title":"推奨ハードウェア"},{"id":"page-0-section-2","title":"章立て"},{"id":"page-0-section-3","title":"セットアップ"},{"id":"page-0-section-4","title":"サンプル実行"},{"id":"page-0-section-5","title":"安全上の注意"},{"id":"page-0-section-6","title":"ライセンス"}],"html":"<h1 id=\"raspberry-pi-5-analog-device-tutorial\">Raspberry Pi 5 Analog Device Tutorial</h1>\n<p>Raspberry Pi 5 を使って、アナログセンサー、モーター、電子回路の基礎を学ぶための教育用リポジトリです。</p>\n<p>Raspberry Pi にはアナログ入力ピンがないため、この教材では ADC、抵抗分圧、PWM、I2C、SPI、モータードライバなどを使いながら、実際に手を動かして電子工作の土台を学びます。</p>\n<h2 id=\"対象\">対象</h2>\n<ul>\n<li>Raspberry Pi と電子工作を初めて学ぶ人</li>\n<li>センサー値を Python で読み取りたい人</li>\n<li>DC モーター、サーボモーター、ステッピングモーターを安全に動かしたい人</li>\n<li>教室、ワークショップ、部活動などで使える教材を作りたい人</li>\n</ul>\n<h2 id=\"推奨ハードウェア\">推奨ハードウェア</h2>\n<ul>\n<li>Raspberry Pi 5</li>\n<li>microSD カード、USB-C 電源、HDMI または SSH 環境</li>\n<li>ブレッドボード、ジャンパーワイヤ</li>\n<li>抵抗セット</li>\n<li>LED、タクトスイッチ</li>\n<li>ADC モジュール: ADS1115 または MCP3008</li>\n<li>アナログセンサー: 可変抵抗、CdS、サーミスタ、土壌水分センサーなど</li>\n<li>モータードライバ: TB6612FNG、DRV8833、L298N など</li>\n<li>DC モーター、サーボモーター、ステッピングモーター</li>\n<li>外部電源、ヒューズ付き電源ライン、共通 GND 用配線</li>\n</ul>\n<h2 id=\"章立て\">章立て</h2>\n<ol>\n<li><a href=\"docs/00_overview/README.md\">全体像</a></li>\n<li><a href=\"docs/01_electronics_basics/README.md\">電子回路の基礎</a></li>\n<li><a href=\"docs/02_raspberry_pi_setup/README.md\">Raspberry Pi 5 のセットアップ</a></li>\n<li><a href=\"docs/03_adc_analog_input/README.md\">ADC でアナログ値を読む</a></li>\n<li><a href=\"docs/04_sensors/README.md\">アナログセンサーを使う</a></li>\n<li><a href=\"docs/05_motors/README.md\">モーターを動かす</a></li>\n<li><a href=\"docs/06_projects/README.md\">小さな制作課題</a></li>\n</ol>\n<h2 id=\"セットアップ\">セットアップ</h2>\n<p>Raspberry Pi OS 上で実行します。</p>\n<pre><code class=\"language-bash\">sudo apt update\nsudo apt install -y python3-venv python3-pip git\npython3 -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt</code></pre>\n<p>I2C/SPI を使う場合は Raspberry Pi の設定で有効化します。</p>\n<pre><code class=\"language-bash\">sudo raspi-config</code></pre>\n<p><code>Interface Options</code> から <code>I2C</code> と <code>SPI</code> を有効化してください。</p>\n<h2 id=\"サンプル実行\">サンプル実行</h2>\n<p>ADS1115 で可変抵抗の値を読む例:</p>\n<pre><code class=\"language-bash\">python examples/adc/read_ads1115.py</code></pre>\n<p>サーボモーターを動かす例:</p>\n<pre><code class=\"language-bash\">python examples/motors/servo_sweep.py</code></pre>\n<h2 id=\"安全上の注意\">安全上の注意</h2>\n<ul>\n<li>Raspberry Pi の GPIO は 3.3V 系です。5V を GPIO に直接入れないでください。</li>\n<li>モーターは Raspberry Pi の 5V ピンから直接駆動しないでください。</li>\n<li>モーター用電源と Raspberry Pi は GND を共通にします。</li>\n<li>配線を変えるときは、原則として電源を切ってください。</li>\n<li>発熱、焦げた匂い、異音がある場合はすぐに電源を切ってください。</li>\n</ul>\n<h2 id=\"ライセンス\">ライセンス</h2>\n<p>教材本文とコードのライセンスは、運用方針に合わせて後で決めます。</p>","text":"  Raspberry Pi 5 Analog Device Tutorial\n\nRaspberry Pi 5 を使って アナログセンサー モーター 電子回路の基礎を学ぶための教育用リポジトリです \n\nRaspberry Pi にはアナログ入力ピンがないため この教材では ADC 抵抗分圧 PWM I2C SPI モータードライバなどを使いながら 実際に手を動かして電子工作の土台を学びます \n\n   対象\n\n  Raspberry Pi と電子工作を初めて学ぶ人\n  センサー値を Python で読み取りたい人\n  DC モーター サーボモーター ステッピングモーターを安全に動かしたい人\n  教室 ワークショップ 部活動などで使える教材を作りたい人\n\n   推奨ハードウェア\n\n  Raspberry Pi 5\n  microSD カード USB C 電源 HDMI または SSH 環境\n  ブレッドボード ジャンパーワイヤ\n  抵抗セット\n  LED タクトスイッチ\n  ADC モジュール  ADS1115 または MCP3008\n  アナログセンサー  可変抵抗 CdS サーミスタ 土壌水分センサーなど\n  モータードライバ  TB6612FNG DRV8833 L298N など\n  DC モーター サーボモーター ステッピングモーター\n  外部電源 ヒューズ付き電源ライン 共通 GND 用配線\n\n   章立て\n\n1   全体像  docs 00 overview README md \n2   電子回路の基礎  docs 01 electronics basics README md \n3   Raspberry Pi 5 のセットアップ  docs 02 raspberry pi setup README md \n4   ADC でアナログ値を読む  docs 03 adc analog input README md \n5   アナログセンサーを使う  docs 04 sensors README md \n6   モーターを動かす  docs 05 motors README md \n7   小さな制作課題  docs 06 projects README md \n\n   セットアップ\n\nRaspberry Pi OS 上で実行します \n\n\n\nI2C SPI を使う場合は Raspberry Pi の設定で有効化します \n\n\n\n Interface Options  から  I2C  と  SPI  を有効化してください \n\n   サンプル実行\n\nADS1115 で可変抵抗の値を読む例 \n\n\n\nサーボモーターを動かす例 \n\n\n\n   安全上の注意\n\n  Raspberry Pi の GPIO は 3 3V 系です 5V を GPIO に直接入れないでください \n  モーターは Raspberry Pi の 5V ピンから直接駆動しないでください \n  モーター用電源と Raspberry Pi は GND を共通にします \n  配線を変えるときは 原則として電源を切ってください \n  発熱 焦げた匂い 異音がある場合はすぐに電源を切ってください \n\n   ライセンス\n\n教材本文とコードのライセンスは 運用方針に合わせて後で決めます \n"},{"id":"page-1","title":"全体像","path":"docs/00_overview/README.md","sections":[{"id":"page-1-section-0","title":"学習の流れ"},{"id":"page-1-section-1","title":"Raspberry Pi 5 でアナログを扱う考え方"},{"id":"page-1-section-2","title":"この教材で重視すること"}],"html":"<h1 id=\"全体像\">全体像</h1>\n<p>この教材では、Raspberry Pi 5 を「測る」「判断する」「動かす」ための小さな実験台として使います。</p>\n<h2 id=\"学習の流れ\">学習の流れ</h2>\n<ol>\n<li>電圧、電流、抵抗、GND、オームの法則を学ぶ</li>\n<li>GPIO、I2C、SPI、PWM の役割を知る</li>\n<li>ADC を使ってアナログ電圧をデジタル値に変換する</li>\n<li>センサー値を Python で読み取り、単位や意味に変換する</li>\n<li>PWM とモータードライバでモーターを安全に動かす</li>\n<li>センサーとモーターを組み合わせた制作課題に進む</li>\n</ol>\n<h2 id=\"raspberry-pi-5-でアナログを扱う考え方\">Raspberry Pi 5 でアナログを扱う考え方</h2>\n<p>Raspberry Pi 5 の GPIO はデジタル入力とデジタル出力です。Arduino のようなアナログ入力ピンはありません。</p>\n<p>そのため、可変抵抗や光センサーのように連続的な電圧を出す部品を扱うには、ADC を使います。ADC は Analog-to-Digital Converter の略で、電圧を数値に変換する部品です。</p>\n<h2 id=\"この教材で重視すること\">この教材で重視すること</h2>\n<ul>\n<li>配線を見て意味が説明できること</li>\n<li>センサー値をただ読むだけでなく、電圧や物理量として考えること</li>\n<li>モーターを安全に動かすための電源設計を理解すること</li>\n<li>コードと回路を同時に少しずつ変えながら観察すること</li>\n</ul>","text":"  全体像\n\nこの教材では Raspberry Pi 5 を 測る  判断する  動かす ための小さな実験台として使います \n\n   学習の流れ\n\n1  電圧 電流 抵抗 GND オームの法則を学ぶ\n2  GPIO I2C SPI PWM の役割を知る\n3  ADC を使ってアナログ電圧をデジタル値に変換する\n4  センサー値を Python で読み取り 単位や意味に変換する\n5  PWM とモータードライバでモーターを安全に動かす\n6  センサーとモーターを組み合わせた制作課題に進む\n\n   Raspberry Pi 5 でアナログを扱う考え方\n\nRaspberry Pi 5 の GPIO はデジタル入力とデジタル出力です Arduino のようなアナログ入力ピンはありません \n\nそのため 可変抵抗や光センサーのように連続的な電圧を出す部品を扱うには ADC を使います ADC は Analog to Digital Converter の略で 電圧を数値に変換する部品です \n\n   この教材で重視すること\n\n  配線を見て意味が説明できること\n  センサー値をただ読むだけでなく 電圧や物理量として考えること\n  モーターを安全に動かすための電源設計を理解すること\n  コードと回路を同時に少しずつ変えながら観察すること\n"},{"id":"page-2","title":"電子回路の基礎","path":"docs/01_electronics_basics/README.md","sections":[{"id":"page-2-section-0","title":"電圧"},{"id":"page-2-section-1","title":"電流"},{"id":"page-2-section-2","title":"抵抗"},{"id":"page-2-section-3","title":"GND"},{"id":"page-2-section-4","title":"抵抗分圧"}],"html":"<h1 id=\"電子回路の基礎\">電子回路の基礎</h1>\n<p>この章では、Raspberry Pi に部品を接続する前に必要な最低限の電子回路を学びます。</p>\n<h2 id=\"電圧\">電圧</h2>\n<p>電圧は電気を押し出す力のようなものです。Raspberry Pi の GPIO は 3.3V で動作します。</p>\n<p>重要なのは、GPIO に 5V を直接入れてはいけないという点です。センサーやモジュールが 5V 出力の場合は、レベル変換や抵抗分圧が必要になります。</p>\n<h2 id=\"電流\">電流</h2>\n<p>電流は流れる電気の量です。LED やモーターは電流を必要とします。</p>\n<p>GPIO ピンから大きな電流を取り出すことはできません。特にモーターは起動時に大きな電流が流れるため、モータードライバと外部電源を使います。</p>\n<h2 id=\"抵抗\">抵抗</h2>\n<p>抵抗は電流の流れを制限します。LED には電流制限抵抗が必要です。</p>\n<p>オームの法則:</p>\n<pre><code class=\"language-text\">V = I * R</code></pre>\n<p>例: 3.3V で LED に 10mA 流したい場合、LED の順方向電圧を 2.0V とすると、抵抗にかかる電圧は 1.3V です。</p>\n<pre><code class=\"language-text\">R = 1.3V / 0.01A = 130 ohm</code></pre>\n<p>実際には 150 ohm や 220 ohm など、手元にある近い値を使います。</p>\n<h2 id=\"gnd\">GND</h2>\n<p>GND は回路の基準点です。Raspberry Pi、ADC、センサー、モータードライバ、外部電源を組み合わせるときは、必要に応じて GND を共通にします。</p>\n<h2 id=\"抵抗分圧\">抵抗分圧</h2>\n<p>抵抗分圧は、2本の抵抗で電圧を下げる方法です。5V の信号を 3.3V 以下に下げるときなどに使います。</p>\n<pre><code class=\"language-text\">Vout = Vin * R2 / (R1 + R2)</code></pre>\n<p>ただし、モーターや大きな電流が流れる用途には使いません。抵抗分圧は信号用です。</p>","text":"  電子回路の基礎\n\nこの章では Raspberry Pi に部品を接続する前に必要な最低限の電子回路を学びます \n\n   電圧\n\n電圧は電気を押し出す力のようなものです Raspberry Pi の GPIO は 3 3V で動作します \n\n重要なのは GPIO に 5V を直接入れてはいけないという点です センサーやモジュールが 5V 出力の場合は レベル変換や抵抗分圧が必要になります \n\n   電流\n\n電流は流れる電気の量です LED やモーターは電流を必要とします \n\nGPIO ピンから大きな電流を取り出すことはできません 特にモーターは起動時に大きな電流が流れるため モータードライバと外部電源を使います \n\n   抵抗\n\n抵抗は電流の流れを制限します LED には電流制限抵抗が必要です \n\nオームの法則 \n\n\n\n例  3 3V で LED に 10mA 流したい場合 LED の順方向電圧を 2 0V とすると 抵抗にかかる電圧は 1 3V です \n\n\n\n実際には 150 ohm や 220 ohm など 手元にある近い値を使います \n\n   GND\n\nGND は回路の基準点です Raspberry Pi ADC センサー モータードライバ 外部電源を組み合わせるときは 必要に応じて GND を共通にします \n\n   抵抗分圧\n\n抵抗分圧は 2本の抵抗で電圧を下げる方法です 5V の信号を 3 3V 以下に下げるときなどに使います \n\n\n\nただし モーターや大きな電流が流れる用途には使いません 抵抗分圧は信号用です \n"},{"id":"page-3","title":"Raspberry Pi 5 のセットアップ","path":"docs/02_raspberry_pi_setup/README.md","sections":[{"id":"page-3-section-0","title":"OS"},{"id":"page-3-section-1","title":"基本パッケージ"},{"id":"page-3-section-2","title":"I2C と SPI の有効化"},{"id":"page-3-section-3","title":"Python 環境"},{"id":"page-3-section-4","title":"I2C デバイス確認"}],"html":"<h1 id=\"raspberry-pi-5-のセットアップ\">Raspberry Pi 5 のセットアップ</h1>\n<h2 id=\"os\">OS</h2>\n<p>Raspberry Pi OS Bookworm を想定します。</p>\n<h2 id=\"基本パッケージ\">基本パッケージ</h2>\n<pre><code class=\"language-bash\">sudo apt update\nsudo apt install -y python3-venv python3-pip git i2c-tools</code></pre>\n<h2 id=\"i2c-と-spi-の有効化\">I2C と SPI の有効化</h2>\n<pre><code class=\"language-bash\">sudo raspi-config</code></pre>\n<p><code>Interface Options</code> から <code>I2C</code> と <code>SPI</code> を有効化します。</p>\n<p>確認:</p>\n<pre><code class=\"language-bash\">ls /dev/i2c-*\nls /dev/spidev*</code></pre>\n<h2 id=\"python-環境\">Python 環境</h2>\n<pre><code class=\"language-bash\">python3 -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt</code></pre>\n<h2 id=\"i2c-デバイス確認\">I2C デバイス確認</h2>\n<p>ADS1115 などの I2C デバイスを接続したあと、次のコマンドでアドレスを確認します。</p>\n<pre><code class=\"language-bash\">i2cdetect -y 1</code></pre>\n<p>ADS1115 の代表的なアドレスは <code>0x48</code> です。</p>","text":"  Raspberry Pi 5 のセットアップ\n\n   OS\n\nRaspberry Pi OS Bookworm を想定します \n\n   基本パッケージ\n\n\n\n   I2C と SPI の有効化\n\n\n\n Interface Options  から  I2C  と  SPI  を有効化します \n\n確認 \n\n\n\n   Python 環境\n\n\n\n   I2C デバイス確認\n\nADS1115 などの I2C デバイスを接続したあと 次のコマンドでアドレスを確認します \n\n\n\nADS1115 の代表的なアドレスは  0x48  です \n"},{"id":"page-4","title":"ADC でアナログ値を読む","path":"docs/03_adc_analog_input/README.md","sections":[{"id":"page-4-section-0","title":"ADS1115"},{"id":"page-4-section-1","title":"MCP3008"},{"id":"page-4-section-2","title":"実験: 可変抵抗を読む"}],"html":"<h1 id=\"adc-でアナログ値を読む\">ADC でアナログ値を読む</h1>\n<p>Raspberry Pi 5 にはアナログ入力がありません。アナログセンサーを使うには ADC を接続します。</p>\n<h2 id=\"ads1115\">ADS1115</h2>\n<p>ADS1115 は I2C 接続の 16bit ADC です。精度が高く、低速なセンサー値の読み取りに向いています。</p>\n<p>代表的な配線:</p>\n<table><thead><tr><th>ADS1115</th><th>Raspberry Pi 5</th></tr></thead><tbody><tr><td>VDD</td><td>3.3V</td></tr><tr><td>GND</td><td>GND</td></tr><tr><td>SCL</td><td>GPIO3 / SCL</td></tr><tr><td>SDA</td><td>GPIO2 / SDA</td></tr><tr><td>A0</td><td>センサー出力</td></tr></tbody></table>\n<h2 id=\"mcp3008\">MCP3008</h2>\n<p>MCP3008 は SPI 接続の 10bit ADC です。8チャンネル入力があり、複数のセンサーを扱いやすい部品です。</p>\n<h2 id=\"実験-可変抵抗を読む\">実験: 可変抵抗を読む</h2>\n<p>可変抵抗の両端を 3.3V と GND に接続し、中央端子を ADC の入力に接続します。</p>\n<p>つまみを回すと、ADC の値と電圧が変化します。</p>","text":"  ADC でアナログ値を読む\n\nRaspberry Pi 5 にはアナログ入力がありません アナログセンサーを使うには ADC を接続します \n\n   ADS1115\n\nADS1115 は I2C 接続の 16bit ADC です 精度が高く 低速なセンサー値の読み取りに向いています \n\n代表的な配線 \n\n  ADS1115   Raspberry Pi 5  \n             \n  VDD   3 3V  \n  GND   GND  \n  SCL   GPIO3   SCL  \n  SDA   GPIO2   SDA  \n  A0   センサー出力  \n\n   MCP3008\n\nMCP3008 は SPI 接続の 10bit ADC です 8チャンネル入力があり 複数のセンサーを扱いやすい部品です \n\n   実験  可変抵抗を読む\n\n可変抵抗の両端を 3 3V と GND に接続し 中央端子を ADC の入力に接続します \n\nつまみを回すと ADC の値と電圧が変化します \n"},{"id":"page-5","title":"アナログセンサーを使う","path":"docs/04_sensors/README.md","sections":[{"id":"page-5-section-0","title":"例"},{"id":"page-5-section-1","title":"センサー値の考え方"},{"id":"page-5-section-2","title":"キャリブレーション"}],"html":"<h1 id=\"アナログセンサーを使う\">アナログセンサーを使う</h1>\n<p>この章では、ADC を使ってさまざまなアナログセンサーを読み取ります。</p>\n<h2 id=\"例\">例</h2>\n<ul>\n<li>可変抵抗: 角度や入力つまみ</li>\n<li>CdS セル: 明るさ</li>\n<li>サーミスタ: 温度</li>\n<li>土壌水分センサー: 水分量</li>\n<li>圧力センサー: 押す力</li>\n</ul>\n<h2 id=\"センサー値の考え方\">センサー値の考え方</h2>\n<p>センサーから得られる値は、最初は単なる ADC の数値です。</p>\n<p>次の順で考えると理解しやすくなります。</p>\n<ol>\n<li>ADC の生の値</li>\n<li>電圧</li>\n<li>センサーの物理量</li>\n<li>プログラムで使う判断値</li>\n</ol>\n<h2 id=\"キャリブレーション\">キャリブレーション</h2>\n<p>センサー値は部品差や環境で変わります。最小値と最大値を実測し、プログラム内で扱いやすい範囲に変換します。</p>","text":"  アナログセンサーを使う\n\nこの章では ADC を使ってさまざまなアナログセンサーを読み取ります \n\n   例\n\n  可変抵抗  角度や入力つまみ\n  CdS セル  明るさ\n  サーミスタ  温度\n  土壌水分センサー  水分量\n  圧力センサー  押す力\n\n   センサー値の考え方\n\nセンサーから得られる値は 最初は単なる ADC の数値です \n\n次の順で考えると理解しやすくなります \n\n1  ADC の生の値\n2  電圧\n3  センサーの物理量\n4  プログラムで使う判断値\n\n   キャリブレーション\n\nセンサー値は部品差や環境で変わります 最小値と最大値を実測し プログラム内で扱いやすい範囲に変換します \n"},{"id":"page-6","title":"モーターを動かす","path":"docs/05_motors/README.md","sections":[{"id":"page-6-section-0","title":"DC モーター"},{"id":"page-6-section-1","title":"サーボモーター"},{"id":"page-6-section-2","title":"ステッピングモーター"},{"id":"page-6-section-3","title":"電源の注意"}],"html":"<h1 id=\"モーターを動かす\">モーターを動かす</h1>\n<p>モーターは Raspberry Pi の GPIO から直接動かしません。必ずモータードライバと外部電源を使います。</p>\n<h2 id=\"dc-モーター\">DC モーター</h2>\n<p>DC モーターは電圧をかけると回転します。PWM を使うと速度を変えられます。</p>\n<p>必要なもの:</p>\n<ul>\n<li>DC モーター</li>\n<li>モータードライバ</li>\n<li>モーター用外部電源</li>\n<li>共通 GND</li>\n</ul>\n<h2 id=\"サーボモーター\">サーボモーター</h2>\n<p>サーボモーターは PWM 信号で角度を指定します。小型サーボでも電源は Raspberry Pi から直接取らず、外部 5V 電源を使う構成を推奨します。</p>\n<h2 id=\"ステッピングモーター\">ステッピングモーター</h2>\n<p>ステッピングモーターは決まった角度ずつ回転します。位置制御に向いていますが、専用ドライバと適切な電源が必要です。</p>\n<h2 id=\"電源の注意\">電源の注意</h2>\n<ul>\n<li>モーター用電源と Raspberry Pi の GND を共通にする</li>\n<li>モーター電源のプラスを GPIO に接続しない</li>\n<li>モーターの定格電圧と定格電流を確認する</li>\n<li>配線変更時は電源を切る</li>\n</ul>","text":"  モーターを動かす\n\nモーターは Raspberry Pi の GPIO から直接動かしません 必ずモータードライバと外部電源を使います \n\n   DC モーター\n\nDC モーターは電圧をかけると回転します PWM を使うと速度を変えられます \n\n必要なもの \n\n  DC モーター\n  モータードライバ\n  モーター用外部電源\n  共通 GND\n\n   サーボモーター\n\nサーボモーターは PWM 信号で角度を指定します 小型サーボでも電源は Raspberry Pi から直接取らず 外部 5V 電源を使う構成を推奨します \n\n   ステッピングモーター\n\nステッピングモーターは決まった角度ずつ回転します 位置制御に向いていますが 専用ドライバと適切な電源が必要です \n\n   電源の注意\n\n  モーター用電源と Raspberry Pi の GND を共通にする\n  モーター電源のプラスを GPIO に接続しない\n  モーターの定格電圧と定格電流を確認する\n  配線変更時は電源を切る\n"},{"id":"page-7","title":"小さな制作課題","path":"docs/06_projects/README.md","sections":[{"id":"page-7-section-0","title":"課題案"},{"id":"page-7-section-1","title":"制作の進め方"}],"html":"<h1 id=\"小さな制作課題\">小さな制作課題</h1>\n<p>センサーとモーターを組み合わせて、小さな作品を作ります。</p>\n<h2 id=\"課題案\">課題案</h2>\n<ul>\n<li>明るさで回転速度が変わるファン</li>\n<li>可変抵抗で角度を変えるサーボメーター</li>\n<li>温度が上がると動く冷却ファン</li>\n<li>土壌水分が低いと通知する植物モニター</li>\n<li>圧力センサーで反応するミニロボット</li>\n</ul>\n<h2 id=\"制作の進め方\">制作の進め方</h2>\n<ol>\n<li>何を測るか決める</li>\n<li>どのセンサーを使うか決める</li>\n<li>何を動かすか決める</li>\n<li>安全な電源構成を描く</li>\n<li>センサーだけをテストする</li>\n<li>モーターだけをテストする</li>\n<li>両方を組み合わせる</li>\n</ol>","text":"  小さな制作課題\n\nセンサーとモーターを組み合わせて 小さな作品を作ります \n\n   課題案\n\n  明るさで回転速度が変わるファン\n  可変抵抗で角度を変えるサーボメーター\n  温度が上がると動く冷却ファン\n  土壌水分が低いと通知する植物モニター\n  圧力センサーで反応するミニロボット\n\n   制作の進め方\n\n1  何を測るか決める\n2  どのセンサーを使うか決める\n3  何を動かすか決める\n4  安全な電源構成を描く\n5  センサーだけをテストする\n6  モーターだけをテストする\n7  両方を組み合わせる\n"},{"id":"page-8","title":"部品リスト","path":"hardware/parts-list.md","sections":[{"id":"page-8-section-0","title":"最小セット"},{"id":"page-8-section-1","title":"センサー"},{"id":"page-8-section-2","title":"モーター"}],"html":"<h1 id=\"部品リスト\">部品リスト</h1>\n<h2 id=\"最小セット\">最小セット</h2>\n<table><thead><tr><th>種類</th><th>例</th><th>用途</th></tr></thead><tbody><tr><td>Raspberry Pi</td><td>Raspberry Pi 5</td><td>制御用コンピュータ</td></tr><tr><td>ADC</td><td>ADS1115</td><td>アナログ入力</td></tr><tr><td>ブレッドボード</td><td>400穴以上</td><td>試作</td></tr><tr><td>ジャンパーワイヤ</td><td>オス-オス、オス-メス</td><td>配線</td></tr><tr><td>抵抗</td><td>150 ohm、220 ohm、1k ohm、10k ohm</td><td>LED、分圧、プルアップ</td></tr><tr><td>LED</td><td>任意色</td><td>出力の確認</td></tr><tr><td>可変抵抗</td><td>10k ohm</td><td>アナログ入力の練習</td></tr></tbody></table>\n<h2 id=\"センサー\">センサー</h2>\n<table><thead><tr><th>センサー</th><th>学べること</th></tr></thead><tbody><tr><td>CdS セル</td><td>抵抗変化、分圧、明るさ</td></tr><tr><td>サーミスタ</td><td>温度、非線形な変換</td></tr><tr><td>土壌水分センサー</td><td>キャリブレーション、環境変化</td></tr><tr><td>圧力センサー</td><td>アナログ値のしきい値判定</td></tr></tbody></table>\n<h2 id=\"モーター\">モーター</h2>\n<table><thead><tr><th>部品</th><th>用途</th></tr></thead><tbody><tr><td>TB6612FNG / DRV8833</td><td>DC モーター制御</td></tr><tr><td>SG90 などの小型サーボ</td><td>角度制御</td></tr><tr><td>A4988 / DRV8825</td><td>ステッピングモーター制御</td></tr><tr><td>外部電源</td><td>モーター駆動</td></tr></tbody></table>","text":"  部品リスト\n\n   最小セット\n\n  種類   例   用途  \n                   \n  Raspberry Pi   Raspberry Pi 5   制御用コンピュータ  \n  ADC   ADS1115   アナログ入力  \n  ブレッドボード   400穴以上   試作  \n  ジャンパーワイヤ   オス オス オス メス   配線  \n  抵抗   150 ohm 220 ohm 1k ohm 10k ohm   LED 分圧 プルアップ  \n  LED   任意色   出力の確認  \n  可変抵抗   10k ohm   アナログ入力の練習  \n\n   センサー\n\n  センサー   学べること  \n             \n  CdS セル   抵抗変化 分圧 明るさ  \n  サーミスタ   温度 非線形な変換  \n  土壌水分センサー   キャリブレーション 環境変化  \n  圧力センサー   アナログ値のしきい値判定  \n\n   モーター\n\n  部品   用途  \n             \n  TB6612FNG   DRV8833   DC モーター制御  \n  SG90 などの小型サーボ   角度制御  \n  A4988   DRV8825   ステッピングモーター制御  \n  外部電源   モーター駆動  \n"},{"id":"page-9","title":"GPIO メモ","path":"hardware/gpio-notes.md","sections":[{"id":"page-9-section-0","title":"よく使うピン"},{"id":"page-9-section-1","title":"注意"}],"html":"<h1 id=\"gpio-メモ\">GPIO メモ</h1>\n<p>Raspberry Pi 5 の GPIO は 3.3V ロジックです。</p>\n<h2 id=\"よく使うピン\">よく使うピン</h2>\n<table><thead><tr><th>機能</th><th>GPIO</th><th>物理ピン</th></tr></thead><tbody><tr><td>I2C SDA</td><td>GPIO2</td><td>3</td></tr><tr><td>I2C SCL</td><td>GPIO3</td><td>5</td></tr><tr><td>SPI MOSI</td><td>GPIO10</td><td>19</td></tr><tr><td>SPI MISO</td><td>GPIO9</td><td>21</td></tr><tr><td>SPI SCLK</td><td>GPIO11</td><td>23</td></tr><tr><td>SPI CE0</td><td>GPIO8</td><td>24</td></tr><tr><td>PWM 例</td><td>GPIO18</td><td>12</td></tr><tr><td>GND</td><td>-</td><td>6 など</td></tr><tr><td>3.3V</td><td>-</td><td>1, 17</td></tr><tr><td>5V</td><td>-</td><td>2, 4</td></tr></tbody></table>\n<h2 id=\"注意\">注意</h2>\n<ul>\n<li>GPIO 入力に 5V を入れない</li>\n<li>GPIO からモーターを直接駆動しない</li>\n<li>電源ピンの短絡に注意する</li>\n</ul>","text":"  GPIO メモ\n\nRaspberry Pi 5 の GPIO は 3 3V ロジックです \n\n   よく使うピン\n\n  機能   GPIO   物理ピン  \n                   \n  I2C SDA   GPIO2   3  \n  I2C SCL   GPIO3   5  \n  SPI MOSI   GPIO10   19  \n  SPI MISO   GPIO9   21  \n  SPI SCLK   GPIO11   23  \n  SPI CE0   GPIO8   24  \n  PWM 例   GPIO18   12  \n  GND       6 など  \n  3 3V       1  17  \n  5V       2  4  \n\n   注意\n\n  GPIO 入力に 5V を入れない\n  GPIO からモーターを直接駆動しない\n  電源ピンの短絡に注意する\n"}];
+    const storageKey = 'raspi-analog-progress-v1';
+    let currentPageId = pages[0].id;
+    let progress = loadProgress();
+
+    const nav = document.getElementById('nav');
+    const content = document.getElementById('content');
+    const pageTitle = document.getElementById('pageTitle');
+    const pagePath = document.getElementById('pagePath');
+    const checklist = document.getElementById('checklist');
+    const searchInput = document.getElementById('searchInput');
+    const emptyState = document.getElementById('emptyState');
+
+    function loadProgress() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveProgress() {
+      localStorage.setItem(storageKey, JSON.stringify(progress));
+    }
+
+    function isDone(id) {
+      return Boolean(progress[id]);
+    }
+
+    function setDone(id, value) {
+      if (value) {
+        progress[id] = true;
+      } else {
+        delete progress[id];
+      }
+      saveProgress();
+      render();
+    }
+
+    function pageStats(page) {
+      const total = page.sections.length;
+      const done = page.sections.filter((section) => isDone(section.id)).length;
+      return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) };
+    }
+
+    function allSections() {
+      return pages.flatMap((page) => page.sections);
+    }
+
+    function renderOverall() {
+      const sections = allSections();
+      const done = sections.filter((section) => isDone(section.id)).length;
+      const percent = sections.length === 0 ? 0 : Math.round((done / sections.length) * 100);
+      const donePageCount = pages.filter((page) => pageStats(page).percent === 100).length;
+      document.getElementById('overallPercent').textContent = percent + '%';
+      document.getElementById('overallCount').textContent = done + ' / ' + sections.length + ' sections';
+      document.getElementById('overallBar').style.width = percent + '%';
+      document.getElementById('donePages').textContent = donePageCount;
+      document.getElementById('remainingSections').textContent = sections.length - done;
+    }
+
+    function filteredPages() {
+      const query = searchInput.value.trim().toLowerCase();
+      if (!query) return pages;
+      return pages.filter((page) => {
+        const haystack = [page.title, page.path, page.text, ...page.sections.map((section) => section.title)]
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
+    function renderNav() {
+      const visible = filteredPages();
+      if (!visible.some((page) => page.id === currentPageId) && visible[0]) {
+        currentPageId = visible[0].id;
+      }
+      nav.innerHTML = visible.map((page, index) => {
+        const stats = pageStats(page);
+        return '<button type="button" class="' + (page.id === currentPageId ? 'active' : '') + '" data-page="' + page.id + '">' +
+          '<span class="nav-index">' + (index + 1) + '</span>' +
+          '<span class="nav-title">' + page.title + '</span>' +
+          '<span class="nav-progress">' + stats.done + '/' + stats.total + '</span>' +
+        '</button>';
+      }).join('');
+      emptyState.style.display = visible.length === 0 ? 'block' : 'none';
+      content.style.display = visible.length === 0 ? 'none' : 'block';
+    }
+
+    function renderPage() {
+      const page = pages.find((item) => item.id === currentPageId) || pages[0];
+      const stats = pageStats(page);
+      pageTitle.textContent = page.title;
+      pagePath.textContent = page.path;
+      document.getElementById('pageCompletion').textContent = stats.percent + '% complete';
+      content.innerHTML = page.html;
+      checklist.innerHTML = page.sections.map((section) => {
+        return '<label class="check-item">' +
+          '<input type="checkbox" data-section="' + section.id + '"' + (isDone(section.id) ? ' checked' : '') + '>' +
+          '<span>' + section.title + '</span>' +
+        '</label>';
+      }).join('');
+    }
+
+    function render() {
+      renderOverall();
+      renderNav();
+      renderPage();
+    }
+
+    nav.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-page]');
+      if (!button) return;
+      currentPageId = button.dataset.page;
+      render();
+    });
+
+    checklist.addEventListener('change', (event) => {
+      const input = event.target.closest('input[data-section]');
+      if (!input) return;
+      setDone(input.dataset.section, input.checked);
+    });
+
+    searchInput.addEventListener('input', render);
+
+    document.getElementById('markAllCurrent').addEventListener('click', () => {
+      const page = pages.find((item) => item.id === currentPageId);
+      if (!page) return;
+      const stats = pageStats(page);
+      const next = stats.percent !== 100;
+      page.sections.forEach((section) => {
+        if (next) {
+          progress[section.id] = true;
+        } else {
+          delete progress[section.id];
+        }
+      });
+      saveProgress();
+      render();
+    });
+
+    document.getElementById('resetProgress').addEventListener('click', () => {
+      if (!confirm('保存されている進捗をリセットしますか？')) return;
+      progress = {};
+      saveProgress();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
