@@ -1,4 +1,2 @@
-adafruit-blinka>=8.0.0
-adafruit-circuitpython-ads1x15>=2.4.0
 gpiozero>=2.0
 lgpio>=0.2.2
